@@ -1,0 +1,24 @@
+{
+  "name": "lawnchair-sqlite-plugin-adaptor",
+  "version": "0.0.1",
+  "authors": [ "Ram Kaniyur <quadrupleslap@gmail.com>" ],
+  "description": "Lawnchair adaptor for cordova-sqlite-plugin.",
+  "main": "cordova-sqlite.js",
+  "keywords": [
+    "lawnchair",
+    "sqlite",
+    "cordova",
+    "storage"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "lawnchair": "~0.6.4"
+  }
+}
