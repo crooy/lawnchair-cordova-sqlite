@@ -24,7 +24,9 @@ Lawnchair.adapter('sqlite-plugin', (function () {
     // public methods
     return {
     
-        valid: function() { return !!(sqlitePlugin.openDatabase); },
+        valid: function() {
+            return (window.sqlitePlugin && sqlitePlugin.openDatabase);
+        },
 
         init: function (options, callback) {
             var that   = this,
