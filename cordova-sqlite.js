@@ -130,7 +130,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
 			    sql  = '';
             // batch selects support
 			if (this.isArray(keyOrArray)) {
-				sql = "SELECT id, value FROM " + this.name + " WHERE id IN ('" + keyOrArray.join(\'\',\'\') + "')";
+				sql = "SELECT id, value FROM " + this.name + " WHERE id IN ('" + keyOrArray.join("','") + "')";
 			} else {
 				sql = "SELECT id, value FROM " + this.name + " WHERE id = '" + keyOrArray + "'";
 			}	
