@@ -2,8 +2,8 @@
 'use strict';
 
 Lawnchair.adapter('sqlite-plugin', (function () {
-    // private methods 
-    var fail = function (e, i) { console.log('error in sqlite adaptor!', e, i); },
+    // private methods
+    var fail = function(query){ return  function (e, i) { console.log('error in sqlite adaptor!  '+query+" message was "+JSON.stringify(i)); } },
         now  = function () { return new Date(); }; // FIXME need to use better date fn
 	// not entirely sure if this is needed...
     if (!Function.prototype.bind) {
@@ -23,7 +23,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
 
     // public methods
     return {
-    
+
         valid: function() {
             return (window.sqlitePlugin && sqlitePlugin.openDatabase);
         },
@@ -33,12 +33,12 @@ Lawnchair.adapter('sqlite-plugin', (function () {
                 cb     = that.fn(that.name, callback),
                 dbname = options.db || this.name,
                 bgType = options.bgType || 1,
-                create = 'CREATE TABLE IF NOT EXISTS ' + this.name + ' (id NVARCHAR(32) UNIQUE PRIMARY KEY, value TEXT, timestamp REAL)',
+                create = 'CREATE TABLE IF NOT EXISTS ' + this.name + ' (id NVARCHAR(64) PRIMARY KEY, value TEXT, timestamp REAL)',
                 win    = function(){ return cb.call(that, that); };
-            // open a connection and create the db if it doesn't exist 
+            // open a connection and create the db if it doesn't exist
             this.db = sqlitePlugin.openDatabase({name:dbname,bgType:bgType});
-            this.db.transaction(function (t) { 
-                t.executeSql(create, [], win, fail);
+            this.db.transaction(function (t) {
+                t.executeSql(create, [], win, fail(create));
             });
         },
 
@@ -59,7 +59,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
                         cb.call(that, r);
                     }
                 };
-                t.executeSql(keys, [], win, fail);
+                t.executeSql(keys, [], win, fail(keys));
             });
             return this;
         },
@@ -71,20 +71,20 @@ Lawnchair.adapter('sqlite-plugin', (function () {
                 up   = 'UPDATE ' + this.name + ' SET value=?, timestamp=? WHERE id=?',
                 win  = function () { if (callback) { obj.key = id; that.lambda(callback).call(that, obj); }},
                 val  = [now(), id];
-			// existential 
+			// existential
             that.exists(obj.key, function(exists) {
                 // transactions are like condoms
                 that.db.transaction(function(t) {
 					// TODO move timestamp to a plugin
                     var insert = function (obj) {
                         val.unshift(JSON.stringify(obj));
-                        t.executeSql(ins, val, win, fail);
+                        t.executeSql(ins, val, win, fail(ins));
                     };
 					// TODO move timestamp to a plugin
                     var update = function (obj) {
                         delete(obj.key);
                         val.unshift(JSON.stringify(obj));
-                        t.executeSql(up, val, win, fail);
+                        t.executeSql(up, val, win, fail(up));
                     };
 					// pretty
                     if (exists) {
@@ -95,11 +95,11 @@ Lawnchair.adapter('sqlite-plugin', (function () {
                 });
             });
             return this;
-        }, 
+        },
 
 		// FIXME this should be a batch insert / just getting the test to pass...
         batch: function (objs, cb) {
-			
+
 			var results = [],
 			    done = false,
 			    that = this;
@@ -121,7 +121,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
 			for (var i = 0, l = objs.length; i < l; i++) {
 				this.save(objs[i], updateProgress);
       }
-			
+
             return this;
         },
 
@@ -133,7 +133,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
 				sql = "SELECT id, value FROM " + this.name + " WHERE id IN ('" + keyOrArray.join("','") + "')";
 			} else {
 				sql = "SELECT id, value FROM " + this.name + " WHERE id = '" + keyOrArray + "'";
-			}	
+			}
 			// FIXME
             // will always loop the results but cleans it up if not a batch return at the end..
 			// in other words, this could be faster
@@ -156,7 +156,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
           that.lambda(cb).call(that, r);
         }
             };
-            this.db.transaction(function(t){ t.executeSql(sql, [], win, fail); });
+            this.db.transaction(function(t){ t.executeSql(sql, [], win, fail(sql)); });
             return this;
 		},
 
@@ -168,7 +168,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
               that.fn('exists', cb).call(that, (results.rows.length > 0));
             }
           };
-			this.db.transaction(function(t){ t.executeSql(is, [key], win, fail); });
+			this.db.transaction(function(t){ t.executeSql(is, [key], win, fail(is)); });
 			return this;
 		},
 
@@ -190,8 +190,8 @@ Lawnchair.adapter('sqlite-plugin', (function () {
         }
 			};
 
-			this.db.transaction(function (t) { 
-				t.executeSql(all, [], win, fail);
+			this.db.transaction(function (t) {
+				t.executeSql(all, [], win, fail(all));
 			});
 			return this;
 		},
@@ -203,7 +203,7 @@ Lawnchair.adapter('sqlite-plugin', (function () {
 			    win  = function () { if (cb) { that.lambda(cb).call(that); } };
 
 			this.db.transaction( function (t) {
-				t.executeSql(del, [key], win, fail);
+				t.executeSql(del, [key], win, fail(del));
 			});
 
 			return this;
@@ -213,8 +213,8 @@ Lawnchair.adapter('sqlite-plugin', (function () {
 			var nuke = 'DELETE FROM ' + this.name,
 			    that = this,
 			    win  = cb ? function() { that.lambda(cb).call(that); } : function(){};
-				this.db.transaction(function (t) { 
-				t.executeSql(nuke, [], win, fail);
+				this.db.transaction(function (t) {
+				t.executeSql(nuke, [], win, fail(nuke));
 			});
 			return this;
 		}
