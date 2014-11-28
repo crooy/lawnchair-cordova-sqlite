@@ -64,65 +64,38 @@ Lawnchair.adapter('sqlite-plugin', (function () {
             return this;
         },
         // you think thats air you're breathing now?
-        save: function (obj, callback) {
-            var that = this,
-                id   = obj.key || that.uuid(),
-                ins  = 'INSERT INTO ' + this.name + ' (value, timestamp, id) VALUES (?,?,?)',
-                up   = 'UPDATE ' + this.name + ' SET value=?, timestamp=? WHERE id=?',
-                win  = function () { if (callback) { obj.key = id; that.lambda(callback).call(that, obj); }},
-                val  = [now(), id];
-			// existential
-            that.exists(obj.key, function(exists) {
-                // transactions are like condoms
-                that.db.transaction(function(t) {
-					// TODO move timestamp to a plugin
-                    var insert = function (obj) {
-                        val.unshift(JSON.stringify(obj));
-                        t.executeSql(ins, val, win, fail(ins));
-                    };
-					// TODO move timestamp to a plugin
-                    var update = function (obj) {
-                        delete(obj.key);
-                        val.unshift(JSON.stringify(obj));
-                        t.executeSql(up, val, win, fail(up));
-                    };
-					// pretty
-                    if (exists) {
-                      update(obj);
-                    } else {
-                      insert(obj);
-                    }
-                });
-            });
-            return this;
+        save: function (obj, callback, error) {
+            console.log("sqlite save called");
+          var that = this
+          ,   objs = (this.isArray(obj) ? obj : [obj]).map(function(o){if(!o.key) { o.key = that.uuid()} return o})
+          ,   ins  = "REPLACE INTO " + this.name + " (value, timestamp, id) VALUES (?,?,?)"
+          ,   win  = function () { if (callback) { that.lambda(callback).call(that, that.isArray(obj)?objs:objs[0]) }}
+          ,   error= error || function() {}
+          ,   insvals = []
+          ,   ts = now()
+
+          try {
+            for (var i = 0, l = objs.length; i < l; i++) {
+              insvals[i] = [JSON.stringify(objs[i]), ts, objs[i].key];
+            }
+          } catch (e) {
+            console.log("error while saving "+JSON.stringify(e));
+            fail(ins)(e);
+            throw e;
+          }
+
+             that.db.transaction(function(t) {
+            for (var i = 0, l = objs.length; i < l; i++)
+              t.executeSql(ins, insvals[i]);
+             }, function(e,i){fail(ins)(e,i);}, win);
+
+          return this;
         },
 
-		// FIXME this should be a batch insert / just getting the test to pass...
-        batch: function (objs, cb) {
 
-			var results = [],
-			    done = false,
-			    that = this;
-
-			var updateProgress = function(obj) {
-				results.push(obj);
-				done = results.length === objs.length;
-			};
-
-			var checkProgress = setInterval(function() {
-				if (done) {
-					if (cb) {
-            that.lambda(cb).call(that, results);
-          }
-					clearInterval(checkProgress);
-				}
-			}, 200);
-
-			for (var i = 0, l = objs.length; i < l; i++) {
-				this.save(objs[i], updateProgress);
-      }
-
-            return this;
+        batch: function (objs, callback, error) {
+          console.log("sqlite batch save called");
+          return this.save(objs, callback, error);
         },
 
         get: function (keyOrArray, cb) {
